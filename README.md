@@ -1,0 +1,1 @@
+This repository accompanies the paper "Simulation-based comparison of multivariate ensemble post-processing methods" (Lerch et al., 2019, URL) and provides R code with implementations of all simulation settings as well as code to reproduce the results presented in the paper and the supplemental material.
