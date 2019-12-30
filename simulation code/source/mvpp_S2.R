@@ -103,17 +103,21 @@ mvpp_S2 <- function(method, variant = NULL, ens, verobs, postproc_out, EMOS_samp
              
              for(nn in 1:n){
                # select forecast cases to estimatate covariance matrix
-               #   ... theoretically, covariance matrix could also be estimated from past ensemble forecasts
-               #   ... to speed up computation, it would also be possible to only use obs_init
                obs_train <- obs_all[1:(dim(obs_init)[1]+nn-1), ]
-               # estimate covariance matrix
-               cov_obs <- cov(obs_train)
+               # transform to Gaussian
+               obs_train_transformed <- obs_train
+               for(dd in 1:d){
+                 par <- postproc_out$parameters[nn, dd, ]
+                 obs_train_transformed[nn, dd] <- qnorm(ptruncnorm(obs_train[nn, dd], mean = par[1], sd = par[2], a = lowerB[dd], b = upperB[dd]))
+               }
+               # estimate correlation matrix
+               cor_obs <- cor(obs_train_transformed)
                # draw random sample from multivariate normal distribution with this covariance matrix
-               mvsample <- mvrnorm(n = m, mu = rep(0,d), Sigma = cov_obs)
+               mvsample <- mvrnorm(n = m, mu = rep(0,d), Sigma = cor_obs)
                # impose dependence structure on post-processed forecasts
                for(dd in 1:d){
                  par <- postproc_out$parameters[nn, dd, ]
-                 mvppout[nn, , dd] <- qnorm(pnorm(mvsample[, dd]), mean = par[1], sd = par[2])
+                 mvppout[nn, , dd] <- qtruncnorm(pnorm(mvsample[, dd]), mean = par[1], sd = par[2], a = lowerB[dd], b = upperB[dd])
                }
              }
              
