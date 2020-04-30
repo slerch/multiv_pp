@@ -22,6 +22,10 @@ mypal_use <- c("decc.q" = mypal[1],
 
 plot_folder <- "/path/to/save/figures/"
 
+# Function to identify outliers in the data frame model-wise
+# for deleting them for plotting purposes
+source(file = "/path/to/Rfunctions/identify_outliers.r")
+
                
 load("/path/to/save/output/df_gev0.Rdata")
 
@@ -73,16 +77,27 @@ dfplot <- subset(df1, score == this_score)
 
 dfplot$equalRhos <- (dfplot$rho0 == dfplot$rho)
 
-# For the GEV0 results, some extreme outliers can appear. In order to have a better view
-# of the main bulk of boxplots, it is possible to "zoom in" on the y-axis,
-# cutting of extreme DM-test results
-# Can e.g. be done by adding the call + coord_cartesian(ylim = c(...,...)) to first line below
 
-# For scenario A, the figure in the paper was obtained by using ylim=c(-100,20)
-# For scenario B, C, D the full range of y-axis was kept, as no extreme outliers were present
+# For the GEV0 results, some extreme outliers can and do appear frequently.
+# In order to have a better view of the main bulk of data points and
+# not letting the comparison of boxplots suffer from single extreme outliers,
+# a removal of outliers outside the standard fences (1.5 times IQR) is
+# conducted before plotting
+# For this, source the outlier identification function above and
+# then apply the following
+mod_out <- by(dfplot$value, dfplot$model, hf, coef=1.5)
+mod_names <- levels(dfplot$model)
+keep_ind <- NULL
+for (i in 1:length(mod_names)){
+  sel <- mod_names[i]
+  add_keep <- which(dfplot$model == sel)[!mod_out[[sel]]]
+  keep_ind <- c(keep_ind, add_keep)
+}
+
+dfplot <- dfplot[keep_ind,]
 
 
-    p1 <- ggplot(dfplot, aes(model, value, colour = model)) #+ coord_cartesian(ylim = c(-100, 20))   # if zooming-in on y-axis required
+    p1 <- ggplot(dfplot, aes(model, value, colour = model))
     p1 <- p1 + geom_rect(data = subset(dfplot, equalRhos == TRUE), color = "black", size=2, fill = NA, xmin = -Inf,xmax = Inf, ymin = -Inf, ymax = Inf)
     p1 <- p1 + geom_rect(mapping=aes(xmin=-Inf, xmax=Inf, ymin=qnorm(0.025), ymax=qnorm(0.975)), fill = "gray75", color="gray75", alpha=0.25)
     p1 <- p1 + geom_boxplot() + geom_hline(yintercept = 0, linetype = "dashed", color = "gray25")
@@ -92,14 +107,16 @@ dfplot$equalRhos <- (dfplot$rho0 == dfplot$rho)
     p1 <- p1 + scale_color_manual(values = mypal_use, name = "Model", label = model_vec)
     p1 <- p1 + scale_x_discrete(label = model_vec)
     p1 <- p1 + facet_grid(rows = vars(rho), cols = vars(rho0),
-                      labeller = label_bquote(rows = rho["x"]==.(rho),
-                                              cols = rho[y]==.(rho0)))
+                       labeller = label_bquote(rows = rho ==.(rho),
+                                              cols = rho[0]==.(rho0)))
 
-
-
-    p1 <- p1 + ggtitle(bquote(list("Energy Score", mu[y] == .(dfplot$gev0loc_obs), sigma[y] == .(dfplot$gev0scale_obs),
-              xi[y] == .(dfplot$gev0shape_obs), mu[x] == .(dfplot$gev0loc_ens),
-              sigma[x]  == .(dfplot$gev0scale_ens), xi[x] == .(dfplot$gev0shape_ens))))
+    # Specify m to be the number of ensemble members you are visualizing
+    # The other parameter values of observation and forecast distributions are automatically read from the
+    # data frame containing the DM Test results, see to have a data frame with the respective structure
+    # or enter the parameter values you plot manually here
+    p1 <- p1 + ggtitle(bquote(list("Energy Score", m == 50, mu[0] == .(dfplot$gev0loc_obs), sigma[0] == .(dfplot$gev0scale_obs),
+                 xi[0] == .(dfplot$gev0shape_obs), mu == .(dfplot$gev0loc_ens),
+                 sigma == .(dfplot$gev0scale_ens), xi == .(dfplot$gev0shape_ens))))
 
 
     p1_save <- p1
@@ -115,18 +132,26 @@ dfplot <- subset(df1, score == this_score)
 dfplot$equalRhos <- (dfplot$rho0 == dfplot$rho)
 
 
-# For the GEV0 results, some extreme outliers can appear. In order to have a better view
-# of the main bulk of boxplots, it is possible to "zoom in" on the y-axis,
-# cutting of extreme DM-test results
-# Can e.g. be done by adding the call + coord_cartesian(ylim = c(...,...)) to first line below
+# For the GEV0 results, some extreme outliers can and do appear frequently.
+# In order to have a better view of the main bulk of data points and
+# not letting the comparison of boxplots suffer from single extreme outliers,
+# a removal of outliers outside the standard fences (1.5 times IQR) is
+# conducted before plotting
+# For this, source the outlier identification function above and
+# then apply the following
+mod_out <- by(dfplot$value, dfplot$model, hf, coef=1.5)
+mod_names <- levels(dfplot$model)
+keep_ind <- NULL
+for (i in 1:length(mod_names)){
+  sel <- mod_names[i]
+  add_keep <- which(dfplot$model == sel)[!mod_out[[sel]]]
+  keep_ind <- c(keep_ind, add_keep)
+}
 
-# For scenario A, the figure in the paper was obtained by using ylim=c(-85,40)
-# For scenario B and D the full range of y-axis was kept, as no extreme outliers were present
-# For scenario C, the figure in the paper was obtained by using ylim=c(-30,15)
+dfplot <- dfplot[keep_ind,]
 
 
-
-    p1 <- ggplot(dfplot, aes(model, value, colour = model)) #+ coord_cartesian(ylim = c(-30, 15))   # if zooming-in on y-axis required
+    p1 <- ggplot(dfplot, aes(model, value, colour = model))
     p1 <- p1 + geom_rect(data = subset(dfplot, equalRhos == TRUE), color = "black", size=2, fill = NA, xmin = -Inf,xmax = Inf, ymin = -Inf, ymax = Inf)
     p1 <- p1 + geom_rect(mapping=aes(xmin=-Inf, xmax=Inf, ymin=qnorm(0.025), ymax=qnorm(0.975)), fill = "gray75", color="gray75", alpha=0.25)
     p1 <- p1 + geom_boxplot() + geom_hline(yintercept = 0, linetype = "dashed", color = "gray25")
@@ -136,12 +161,18 @@ dfplot$equalRhos <- (dfplot$rho0 == dfplot$rho)
     p1 <- p1 + scale_color_manual(values = mypal_use, name = "Model", label = model_vec)
     p1 <- p1 + scale_x_discrete(label = model_vec)
     p1 <- p1 + facet_grid(rows = vars(rho), cols = vars(rho0),
-                      labeller = label_bquote(rows = rho["x"]==.(rho),
-                                              cols = rho[y]==.(rho0)))
+                      labeller = label_bquote(rows = rho ==.(rho),
+                                              cols = rho[0]==.(rho0)))
 
-    p1 <- p1 + ggtitle(bquote(list("Variogram Score", mu[y] == .(dfplot$gev0loc_obs), sigma[y] == .(dfplot$gev0scale_obs),
-                 xi[y] == .(dfplot$gev0shape_obs), mu[x] == .(dfplot$gev0loc_ens),
-                 sigma[x]  == .(dfplot$gev0scale_ens), xi[x] == .(dfplot$gev0shape_ens))))
+
+    # Specify m to be the number of ensemble members you are visualizing
+    # The other parameter values of observation and forecast distributions are automatically read from the
+    # data frame containing the DM Test results, see to have a data frame with the respective structure
+    # or enter the parameter values you plot manually here
+    p1 <- p1 + ggtitle(bquote(list("Variogram Score", m == 50, mu[0] == .(dfplot$gev0loc_obs), sigma[0] == .(dfplot$gev0scale_obs),
+              xi[0] == .(dfplot$gev0shape_obs), mu == .(dfplot$gev0loc_ens),
+              sigma == .(dfplot$gev0scale_ens), xi == .(dfplot$gev0shape_ens))))
+
 
 
     p2_save <- p1
