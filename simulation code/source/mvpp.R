@@ -1,5 +1,8 @@
 # multivariate post-processing methods, applied to result of univariate post-processing 
 
+# Note that parts of the notation may differ from the notation in the paper
+#   ... in particular regarding the numbering of the settings which was changed during the revision (2 -> S1; 3 -> 2; 4 -> 3A, new: 3B)
+
 # the following methods are applied:
 #   - EMOS-X: not accounting for any multivariate dependencies, independet samples from fc distributions in margins
 #       EMOS-Q: equidistant quantiles at levels 1/m+1, ..., m/m+1

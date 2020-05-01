@@ -1,5 +1,6 @@
 # code to generate multivariate observations 
 # Note that parts of the notation may differ from the notation in the paper
+#   ... in particular regarding the numbering of the settings which was changed during the revision (2 -> S1; 3 -> 2; 4 -> 3A, new: 3B)
 
 # input:
 #   model: numeric, indicating which model is used for the observations
@@ -59,7 +60,7 @@ generate_obs <- function(model, nout, ninit, d, ...){
   }
   
   
-  # Setting 2 (multivariate truncated Gaussian distribution)
+  # Setting 2 (S1 in the paper)
   if(model == 2){
     
     require(tmvtnorm)
@@ -103,7 +104,7 @@ generate_obs <- function(model, nout, ninit, d, ...){
     
   }
   
-  # Setting 4 (multivariate Gaussian distribution with changes over iterations)
+  # Setting 4 (3A in the paper)
   if(model == 4){
     # check if appropriate additional parameters are given
     input <- list(...)
@@ -151,6 +152,72 @@ generate_obs <- function(model, nout, ninit, d, ...){
       for(i in 1:d){
         for(j in 1:d){
           R[i,j] <- rho0^(abs(i-j)) + sin(2*pi*(ninit + nn)/n_all)
+        }
+      }
+      RtR <- R %*% t(R)
+      S <- cov2cor(RtR) 
+      
+      tmp <- mvrnorm(n = 1, mu = mu, Sigma = S)
+      obs[nn,] <- tmp
+    }
+    
+  }
+  
+  # Setting 5 (3B in the paper)
+  if(model == 5){
+    # check if appropriate additional parameters are given
+    input <- list(...)
+    ind_check <- match(c("rho0"), names(input), nomatch = 0)
+    if(ind_check == 0){
+      stop(paste("Missing additional model-specific parameter",
+                 paste("Given input:", paste(names(input), collapse=", ")),
+                 paste("Required input:", paste("rho0", collapse=", ")),
+                 sep="\n")
+      )
+    }
+    
+    # assign additional parameters from input
+    rho0 <- input$rho0
+    a <- input$a
+    
+    n_all <- ninit + nout
+    
+    # generate forecasts
+    for(nn in 1:ninit){
+      
+      # mean vector
+      mu <- rep(0, d)
+      
+      # time-varying rho
+      rho0_nn <- rho0*(1 - a/2) + rho0*a/2*sin(2*pi*nn/n_all) 
+      
+      # covariance matrix
+      R <- matrix(NA, d, d)
+      for(i in 1:d){
+        for(j in 1:d){
+          R[i,j] <- rho0_nn^(abs(i-j)) 
+        }
+      }
+      RtR <- R %*% t(R)
+      S <- cov2cor(RtR)
+      
+      tmp <- mvrnorm(n = 1, mu = mu, Sigma = S)
+      obs_init[nn,] <- tmp
+    }
+    
+    for(nn in 1:nout){
+      
+      # mean vector
+      mu <- rep(0, d)
+      
+      # time-varying rho
+      rho0_nn <- rho0*(1 - a/2) + rho0*a/2*sin(2*pi*nn/n_all) 
+      
+      # covariance matrix
+      R <- matrix(NA, d, d)
+      for(i in 1:d){
+        for(j in 1:d){
+          R[i,j] <- rho0_nn^(abs(i-j)) 
         }
       }
       RtR <- R %*% t(R)

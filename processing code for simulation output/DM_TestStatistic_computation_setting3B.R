@@ -4,19 +4,20 @@
 rm(list=ls())
 
 # parameters 
-input_rho0 <- c(0.1, 0.25, 0.5, 0.75, 0.9)
+input_rho0 <- c(0.25, 0.5, 0.75)
 input_eps <- c(1)
-input_sigma <-  1
-input_rho <- c(0.1, 0.25, 0.5, 0.75, 0.9)
+input_sigma <-  c(0.5, 1, 5)
+input_rho <- c(0.2, 0.25, 0.3, 0.4, 0.45, 0.5, 0.55, 0.6, 0.7, 0.75, 0.8)
 input_d <- 5
-input_par <- expand.grid(input_rho0, input_eps, input_sigma, input_rho, input_d)
-names(input_par) <- c("rho0", "eps", "sigma", "rho", "d")
+input_a <- c(2,5,7)/10
+input_par <- expand.grid(input_rho0, input_eps, input_sigma, input_rho, input_d, input_a)
+names(input_par) <- c("rho0", "eps", "sigma", "rho", "d", "a")
 
 df_raw <- data.frame(input_par)
 df_raw$simID <- 1:nrow(df_raw)
 
 flist <- list.files("/path/to/Rdata-files/")
-existing <- as.numeric(sapply(flist, FUN = function(x) as.numeric(strsplit(strsplit(x, "_setting4_")[[1]][2], ".Rdata"))))
+existing <- as.numeric(sapply(flist, FUN = function(x) as.numeric(strsplit(strsplit(x, "_setting3B_")[[1]][2], ".Rdata"))))
 
 df <- df_raw[which(is.element(df_raw$simID, existing)),] 
 
@@ -46,7 +47,7 @@ library(forecast) # for DM test function
 for(filename in flist){
   
   load(paste0("/path/to/Rdata-files/", filename))
-  ID <- as.numeric(as.numeric(strsplit(strsplit(filename, "_setting4_")[[1]][2], ".Rdata")))
+  ID <- as.numeric(as.numeric(strsplit(strsplit(filename, "_setting3B_")[[1]][2], ".Rdata")))
   print(which(flist == filename))
   
   for(this_model in input_models){
@@ -92,5 +93,5 @@ for(filename in flist){
   
 }
 
-save(df100, file = "/path/to/save/output/df_mvNormal_StructuralChange.Rdata")
+save(df100, file = "/path/to/save/output/df_mvNormal_StructuralChange_B.Rdata")
 

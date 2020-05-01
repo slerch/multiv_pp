@@ -2,13 +2,19 @@ rm(list=ls())
 
 library(scoringRules)
 library(MASS)
+library(mvtnorm)
+library(Matrix)
+library(sandwich)
+library(gmm)
+library(tmvtnorm)
+library(truncnorm)
 
 # "source" directory 
 dir <- "..."
 source(paste0(dir, "generate_observations.R"))
 source(paste0(dir, "generate_ensfc.R"))
 source(paste0(dir, "postprocess_ensfc.R"))
-source(paste0(dir, "mvpp.R"))
+source(paste0(dir, "mvpp_S2.R"))
 source(paste0(dir, "evaluation_functions.R"))
 
 eval_all_mult <- function(mvpp_out, obs){
@@ -20,7 +26,7 @@ eval_all_mult <- function(mvpp_out, obs){
   return(list("es" = esout, "vs1" = vs1out, "vs1w" = vs1wout, "vs0" = vs0out, "vs0w" = vs0wout))
 }
 
-run_setting4 <- function(obsmodel, fcmodel, nout, ninit, nmembers, d, MCrep, rand_rep, progress_ind = FALSE, compute_crps, ...){
+run_setting2 <- function(obsmodel, fcmodel, nout, ninit, nmembers, d, MCrep, rand_rep, progress_ind = FALSE, compute_crps, ...){
   
   # generate objects to save scores to
   modelnames <- c("ens", "emos.q", "ecc.q", "ecc.s", "decc.q", "ssh", "gca")
@@ -50,12 +56,14 @@ run_setting4 <- function(obsmodel, fcmodel, nout, ninit, nmembers, d, MCrep, ran
     fc <- generate_ensfc(model = fcmodel, nout = nout, ninit = ninit, nmembers = nmembers, d = d, ...)
     
     # postprocess ensemble forecasts
-    pp_out <- postproc(fcmodel = fcmodel, ensfc = fc$ensfc, ensfc_init = fc$ensfc_init, 
-                       obs = obs$obs, obs_init = obs$obs_init, 
-                       train = "moving", trainlength = 100, emos_plus = FALSE) ## CHANGED
+    input <- list(...)
+    pp_out <- postproc(fcmodel = 2, ensfc = fc$ensfc, ensfc_init = fc$ensfc_init,
+                       obs = obs$obs, obs_init = obs$obs_init,
+                       train = "init", trainlength = NULL, lower = input$lower, upper = input$upper)
     
     ## iterate over models and compute scores
-
+    ## alternatively / for more models, implement this as a for loop over the list entries of modelnames
+    
     # ensemble forecasts
     if(compute_crps){
       crps_list$ens[rr, , ] <- crps_wrapper(fc$ensfc, obs$obs)
@@ -68,8 +76,7 @@ run_setting4 <- function(obsmodel, fcmodel, nout, ninit, nmembers, d, MCrep, ran
     vs0w_list$ens[rr, ] <- tmp$vs0w
     
     # EMOS.Q
-    emos.q <- mvpp(method = "EMOS", variant = "Q", ensfc = fc$ensfc, ensfc_init = fc$ensfc_init,
-                   obs = obs$obs, obs_init = obs$obs_init, postproc_out = pp_out)
+    emos.q <- mvpp_S2(method = "EMOS", variant = "Q", ens = fc, verobs = obs, postproc_out = pp_out)
     
     if(compute_crps){
       crps_list$emos.q[rr, , ] <- crps_wrapper(emos.q, obs$obs)
@@ -82,8 +89,7 @@ run_setting4 <- function(obsmodel, fcmodel, nout, ninit, nmembers, d, MCrep, ran
     vs0w_list$emos.q[rr, ] <- tmp$vs0w
     
     # ECC.Q
-    ecc.q <- mvpp(method = "ECC", ensfc = fc$ensfc, ensfc_init = fc$ensfc_init,
-                  obs = obs$obs, obs_init = obs$obs_init, postproc_out = pp_out, 
+    ecc.q <- mvpp_S2(method = "ECC", ens = fc, verobs = obs, postproc_out = pp_out, 
                   EMOS_sample = emos.q)
     
     if(compute_crps){
@@ -101,10 +107,8 @@ run_setting4 <- function(obsmodel, fcmodel, nout, ninit, nmembers, d, MCrep, ran
       vs0_list_tmp <- vs0w_list_tmp <- matrix(NA, nrow = nout, ncol = rand_rep)
     crps_list_tmp <- array(NA, dim = c(nout, d, rand_rep))
     for(RR in 1:rand_rep){
-      emos.s <- mvpp(method = "EMOS", variant = "S", ensfc = fc$ensfc, ensfc_init = fc$ensfc_init,
-                     obs = obs$obs, obs_init = obs$obs_init, postproc_out = pp_out)
-      ecc.s <- mvpp(method = "ECC", ensfc = fc$ensfc, ensfc_init = fc$ensfc_init,
-                    obs = obs$obs, obs_init = obs$obs_init, postproc_out = pp_out, 
+      emos.s <- mvpp_S2(method = "EMOS", variant = "S", ens = fc, verobs = obs, postproc_out = pp_out)
+      ecc.s <- mvpp_S2(method = "ECC", ens = fc, verobs = obs, postproc_out = pp_out, 
                     EMOS_sample = emos.s)
       
       if(compute_crps){
@@ -125,8 +129,7 @@ run_setting4 <- function(obsmodel, fcmodel, nout, ninit, nmembers, d, MCrep, ran
     vs0w_list$ecc.s[rr, ] <- apply(vs0w_list_tmp, 1, mean)
     
     # dECC.Q
-    decc.q <- mvpp(method = "dECC", ensfc = fc$ensfc, ensfc_init = fc$ensfc_init,
-                   obs = obs$obs, obs_init = obs$obs_init, postproc_out = pp_out, 
+    decc.q <- mvpp_S2(method = "dECC", ens = fc, verobs = obs, postproc_out = pp_out, 
                    EMOS_sample = emos.q, ECC_out = ecc.q) 
     
     if(compute_crps){
@@ -144,8 +147,7 @@ run_setting4 <- function(obsmodel, fcmodel, nout, ninit, nmembers, d, MCrep, ran
       vs0_list_tmp <- vs0w_list_tmp <- matrix(NA, nrow = nout, ncol = rand_rep)
     crps_list_tmp <- array(NA, dim = c(nout, d, rand_rep))
     for(RR in 1:rand_rep){
-      ssh <- mvpp(method = "SSh", ensfc = fc$ensfc, ensfc_init = fc$ensfc_init,
-                  obs = obs$obs, obs_init = obs$obs_init, postproc_out = pp_out,
+      ssh <- mvpp_S2(method = "SSh", ens = fc, verobs = obs, postproc_out = pp_out,
                   EMOS_sample = emos.q) 
       
       if(compute_crps){
@@ -170,8 +172,7 @@ run_setting4 <- function(obsmodel, fcmodel, nout, ninit, nmembers, d, MCrep, ran
       vs0_list_tmp <- vs0w_list_tmp <- matrix(NA, nrow = nout, ncol = rand_rep)
     crps_list_tmp <- array(NA, dim = c(nout, d, rand_rep))
     for(RR in 1:rand_rep){
-      gca <- mvpp(method = "GCA", ensfc = fc$ensfc, ensfc_init = fc$ensfc_init,
-                  obs = obs$obs, obs_init = obs$obs_init, postproc_out = pp_out) 
+      gca <- mvpp_S2(method = "GCA", ens = fc, verobs = obs, postproc_out = pp_out) 
       
       if(compute_crps){
         crps_list_tmp[,,RR] <- crps_wrapper(gca, obs$obs)
@@ -200,29 +201,36 @@ run_setting4 <- function(obsmodel, fcmodel, nout, ninit, nmembers, d, MCrep, ran
 }
 
 # parameters to run
-input_rho0 <- c(0.1, 0.25, 0.5, 0.75, 0.9)
-input_eps <- c(1)
-input_sigma <-  c(1)
+input_l <- c(0)
+input_u <- c(Inf)
+input_rho0 <- c(0.25,0.5,0.75)
+input_mu0 <- c(2,3)
+input_eps <- c(2,3,5)
+input_sigma <- c(0.25,0.5,1,3,5)
 input_rho <- c(0.1, 0.25, 0.5, 0.75, 0.9)
-input_d <- 5
-input_par <- expand.grid(input_rho0, input_eps, input_sigma, input_rho, input_d)
-names(input_par) <- c("rho0", "eps", "sigma", "rho", "d")
+input_d <- c(5)
+input_par <- expand.grid(input_l, input_u, input_rho0, input_mu0,
+                         input_eps, input_sigma, input_rho, input_d)
+names(input_par) <- c("l", "u", "rho0", "mu0", "eps", "sigma", "rho", "d")
 
 # run
 Rdata_dir <- "..." # directory to save Rdata files to
 Rout_dir <- "..." # directory to save Rout files to
 run_wrapper <- function(runID){
-  sink(file = paste0(Rout_dir, "setting4_", runID, ".Rout"))
-  par_values <- as.numeric(input_par[ID, ])
-  res <- run_setting4(obsmodel = 4, fcmodel = 4, nout = 1000, ninit = 500, nmembers = 50, 
+  sink(file = paste0(Rout_dir, "settingS1_", runID, ".Rout"))
+  res <- run_setting2(obsmodel = 2, fcmodel = 2, 
+                  nout = 1000, ninit = 500, nmembers = 50, 
                   MCrep = 100, rand_rep = 10, 
                   progress_ind = TRUE, compute_crps = TRUE,
+                  lower = rep(input_par$l[runID], input_par$d[runID]),
+                  upper = rep(input_par$u[runID], input_par$d[runID]), 
                   rho0 = input_par$rho0[runID], 
-                  rho = input_par$rho[runID], 
+                  mu0 = input_par$mu0[runID],
+                  rho = input_par$rho[runID],
                   eps = input_par$eps[runID], 
                   sigma = input_par$sigma[runID],
                   d = input_par$d[runID])
-  savename <- paste0(Rdata_dir, "res_setting4_", runID, ".Rdata")
+  savename <- paste0(Rdata_dir, "settingS1_", runID, ".Rdata")
   save(res, input_par, file = savename)
   sink()
 }

@@ -91,6 +91,6 @@ p1 <- p1 + scale_color_manual(values = mypal_use, name = "Model", labels = model
 p1 <- p1 + scale_x_discrete(label = model_vec)
 p2_save <- p1
 
-pdf(paste0(plot_folder, "S4_ESVS.pdf"), width = 15, height = 24, pointsize = 11)
+pdf(paste0(plot_folder, "S3A_ESVS.pdf"), width = 15, height = 24, pointsize = 11)
 grid.arrange(p1_save, p2_save, ncol = 1)
 dev.off()

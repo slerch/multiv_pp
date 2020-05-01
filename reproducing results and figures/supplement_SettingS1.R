@@ -89,7 +89,7 @@ for(this_mu0 in input_mu0){
       p1 <- p1 + scale_x_discrete(label = model_vec)
       p2save <- p1
       
-      plotname <- paste0("supplement_S2_mu0_", this_mu0, "_eps", this_eps, "_sigma", 100*round(this_sigma,2), ".pdf")
+      plotname <- paste0("supplement_SS1_mu0_", this_mu0, "_eps", this_eps, "_sigma", 100*round(this_sigma,2), ".pdf")
       pdf(paste0(plot_folder, plotname), width = 15, height = 24, pointsize = 11)
       grid.arrange(p1save, p2save, ncol = 1)
       dev.off()
