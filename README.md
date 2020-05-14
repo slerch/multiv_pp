@@ -1,3 +1,6 @@
+[![DOI](https://zenodo.org/badge/227571021.svg)](https://zenodo.org/badge/latestdoi/227571021)
+
+
 This repository accompanies the paper "Simulation-based comparison of multivariate ensemble post-processing methods" (Lerch et al., 2020,  https://doi.org/10.5194/npg-2019-62) and provides R code with implementations of all simulation settings as well as code to reproduce the results presented in the paper and the supplemental material.
 
 To run simulations and reproduce results from the paper and supplemental material, proceed as follows:
